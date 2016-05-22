@@ -48,39 +48,52 @@ define(['jquery'], function($) {
 		var interval = setInterval(function() {
 			var ballPosition = getPosition(ball);
 			var ballLeft = ballPosition.left;
+			var ballTop = ballPosition.top;
 
 			ballLeft += (ballSpeed * ballDir);
 
 			if (ballDir == -1) {//going left
-				if (ballLeft == ballWidth) {
-					var leftPlayerPosition = getPosition(leftPlayer);
-					var contactPoint = ballContactWithPlayer(ballPosition, leftPlayerPosition);
-					if (contactPoint >= 0) {
-						ballDir *= -1;
-						whichPlayer = rightPlayer;
-						ballVerticalDir = calculateVerticalDir(contactPoint);
-					}
+				if (ballLeft <= ballWidth) {
+					checkIfBallReachedPlayer(ballPosition, leftPlayer);
 				}
 			} else {//going right
-				if(ballLeft == boardWidth - ballWidth) {
-					var rigthPlayerPosition = getPosition(rightPlayer);
-					var contactPoint = ballContactWithPlayer(ballPosition, rigthPlayerPosition);
-					if (contactPoint >= 0) {
-						ballDir *= -1;
-						whichPlayer = leftPlayer;
-						ballVerticalDir = calculateVerticalDir(contactPoint);
-					}
+				if(ballLeft >= boardWidth - ballWidth) {
+					checkIfBallReachedPlayer(ballPosition, rightPlayer);
 				}
 			}
 
-			if (ballLeft >= boardWidth || ballLeft <= 0) {
+			if (ballLeft >= boardWidth || ballLeft <= 0 
+				|| ballTop < 0 || ballTop > boardWidth) {
 				clearInterval(interval);
 				console.log("game over...")
 			}
+			
 			$("#ball").css("left", ballLeft);
 			$("#ball").css("top", ballPosition.top + ballVerticalDir);
 
 		}, 500);
+
+		var checkIfBallReachedPlayer = function(ballPosition, player){
+			var result = false;
+			var playerPosition = getPosition(player);
+			var contactPoint = ballContactWithPlayer(ballPosition, playerPosition);
+			if (contactPoint >= 0) {
+				ballDir *= -1;
+				whichPlayer = whichPlayer == leftPlayer ? rightPlayer : leftPlayer;
+				ballVerticalDir = calculateVerticalDir(contactPoint);
+				if (isCentralPoint()) {
+					ballSpeed++;
+					console.log(ballSpeed);
+				}
+				result = true;
+			}
+			return result;
+		};
+
+		var isCentralPoint = function() {
+			console.log("=>" + ballVerticalDir)
+			return ballVerticalDir >= -0.5 && ballVerticalDir <= 0.5;
+		};
 
 		var calculateVerticalDir = function(ballContactPoint) {
 			return (ballContactPoint - (playerHeight/2)) / 10;
