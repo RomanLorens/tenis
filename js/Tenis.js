@@ -1,108 +1,98 @@
-define(['jquery'], function($) {
+define(['jquery', 'Board'], function($, Board) {
 
 	var start = function() {
 
-		var ball = $("#ball");
-		var board = $("#board");
-		var leftPlayer = $("#left");
-		var rightPlayer = $("#right");
-
 		var ballDir = -1;
 		var ballVerticalDir = 0;
-		var whichPlayer = leftPlayer;
-
 		var ballSpeed = 10;
-		var playerWidth = parseInt(leftPlayer.css("width"));
-		var playerHeight = parseInt(leftPlayer.css("height"));
-		var ballWidth =  parseInt(ball.css("width"));
-		var boardWidth = (function() {
-			var boardWidth = parseInt(board.css("width"));
-			return boardWidth - ballWidth;
-		})();
-		var maxHeight = (function() {
-			var boardHeight = parseInt(board.css("height"));
-			var leftHeight = parseInt(leftPlayer.css("height"));
-			return boardHeight - leftHeight;
-		})();
+		var initSpeed = 200;
+		var intervalSpeed = initSpeed;
 
-		var move = function(elem, dir) {
-			var top = parseInt(elem.css("top"));
-			top += 5 * dir;
-			if (top > maxHeight) {
-				top = maxHeight;
-			} else if (top < 0) {
-				top = 0;
-			}
-			elem.css("top", top);
-		};
-
-		$(document).keydown(function(evt) {
-			if (evt.keyCode == 40) { //down
-				move(whichPlayer, 1);
-			} else if (evt.keyCode == 38) {
-				move(whichPlayer, -1);
-			}
-		});
-
-
-		var interval = setInterval(function() {
-			var ballPosition = getPosition(ball);
+		var moveBall = function() {
+			var ballPosition = getPosition(Board.ball);
 			var ballLeft = ballPosition.left;
 			var ballTop = ballPosition.top;
 
-			ballLeft += (ballSpeed * ballDir);
-
 			if (ballDir == -1) {//going left
-				if (ballLeft <= ballWidth) {
-					checkIfBallReachedPlayer(ballPosition, leftPlayer);
+				if (ballLeft <= Board.ballWidth) {
+					checkIfBallReachedPlayer(ballPosition, Board.leftPlayer);
 				}
 			} else {//going right
-				if(ballLeft >= boardWidth - ballWidth) {
-					checkIfBallReachedPlayer(ballPosition, rightPlayer);
+				if(ballLeft >= Board.boardWidth - (Board.ballWidth + Board.ballWidth)) {
+					checkIfBallReachedPlayer(ballPosition, Board.rightPlayer);
 				}
 			}
 
-			if (ballLeft >= boardWidth || ballLeft <= 0 
-				|| ballTop < 0 || ballTop > boardWidth) {
-				clearInterval(interval);
-				console.log("game over...")
+			var isOutOfBoard = ballTop < 0 || ballTop > Board.boardWidth;
+			if (ballLeft >= (Board.boardWidth  - Board.ballWidth) || ballLeft <= 0 
+				|| isOutOfBoard) {
+				updateScore(isOutOfBoard);
+				if (Board.score.isEnd()) {
+					console.log("game over...");
+					clearInterval(interval);
+					return;
+				} else {
+					initBall();
+				}
+			} else {
+				ballLeft += (ballSpeed * ballDir);
+				Board.ball.css("left", ballLeft);
+				Board.ball.css("top", ballPosition.top + ballVerticalDir);
 			}
 			
-			$("#ball").css("left", ballLeft);
-			$("#ball").css("top", ballPosition.top + ballVerticalDir);
+			clearInterval(interval);
+		    interval = setInterval(moveBall, intervalSpeed);
+		};
 
-		}, 500);
+		var interval = setInterval(moveBall, intervalSpeed);
+
+		var initBall = function() {
+			Board.setBallInCenter();
+			ballVerticalDir = 0;
+			intervalSpeed = initSpeed;
+		};
+
+		var updateScore = function(isOutOfTop) {
+			if (isOutOfTop) {
+				if (ballDir == -1) { //going left
+					Board.score.left++;
+				} else {
+					Board.score.right++;
+				}
+			} else {
+				if (ballDir == -1) {
+					Board.score.right++;
+				} else {
+					Board.score.left++;
+				}
+			}
+			Board.score.draw();
+		};
 
 		var checkIfBallReachedPlayer = function(ballPosition, player){
-			var result = false;
 			var playerPosition = getPosition(player);
 			var contactPoint = ballContactWithPlayer(ballPosition, playerPosition);
 			if (contactPoint >= 0) {
 				ballDir *= -1;
-				whichPlayer = whichPlayer == leftPlayer ? rightPlayer : leftPlayer;
+				Board.changePlayer();
 				ballVerticalDir = calculateVerticalDir(contactPoint);
 				if (isCentralPoint()) {
-					ballSpeed++;
-					console.log(ballSpeed);
+					intervalSpeed -= (intervalSpeed/10)
 				}
-				result = true;
 			}
-			return result;
 		};
 
 		var isCentralPoint = function() {
-			console.log("=>" + ballVerticalDir)
 			return ballVerticalDir >= -0.5 && ballVerticalDir <= 0.5;
 		};
 
 		var calculateVerticalDir = function(ballContactPoint) {
-			return (ballContactPoint - (playerHeight/2)) / 10;
+			return (ballContactPoint - (Board.playerHeight/2)) / 10;
 		};
 
 		var ballContactWithPlayer = function(ballPosition, playerPosition) {
 			var ballTop = ballPosition.top;
 			var playerTop = playerPosition.top;
-			console.log(ballTop + "," + playerTop)
 			var diff = ballTop - playerTop;
 			return diff;
 		};
